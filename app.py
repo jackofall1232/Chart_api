@@ -21,3 +21,8 @@ def chart():
     buf.seek(0)
     
     return send_file(buf, mimetype='image/png')
+
+
+# 👇 Add this part to start the server on the correct port
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
