@@ -25,8 +25,8 @@ def chart():
     fig, axlist = mpf.plot(
         df,
         type='candle',
-        mav=data.get("ema", []),  # Exponential Moving Averages if provided
-        hlines=dict(hlines=data.get("support", []), colors='red'),  # Support levels if provided
+        mav=data.get("ema", []),
+        hlines=dict(hlines=data.get("support", []), colors='red'),
         style=mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc),
         returnfig=True,
         title='Crypto Chart',
@@ -39,21 +39,22 @@ def chart():
         try:
             # Load the logo image
             img = plt.imread(logo_path)
-            
-            # Get the main axes (should be the first one since we're only plotting candles)
+            print(f"Logo loaded successfully from {logo_path}, shape: {img.shape}")
+
+            # Get the main axes (first subplot)
             ax = axlist[0]
-            
-            # Use data coordinates to place watermark over the chart area
+
+            # Use data coordinates for the entire chart area
             x_min, x_max = ax.get_xlim()
             y_min, y_max = ax.get_ylim()
             ax.imshow(
                 img,
                 extent=(x_min, x_max, y_min, y_max),
-                alpha=0.08,  # Adjust this value (0.0-1.0) to make watermark more/less visible
+                alpha=0.1,  # Slightly increased for visibility
                 aspect='auto',
-                zorder=0  # Places watermark behind chart elements
+                zorder=-1  # Ensure it's behind chart elements
             )
-            print("Watermark added successfully")
+            print("Watermark added to chart")
         except Exception as e:
             print(f"Error adding watermark: {e}")
     else:
@@ -61,9 +62,9 @@ def chart():
 
     # Save figure to buffer and return as PNG
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=150, transparent=False)
     buf.seek(0)
     return send_file(buf, mimetype='image/png')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(host='0.0.0.0', port=10000, debug=True)
