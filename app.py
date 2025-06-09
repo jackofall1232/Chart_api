@@ -15,7 +15,7 @@ def chart():
     df.index = pd.to_datetime(df["timestamp"])
     df = df[["Open", "High", "Low", "Close", "Volume"]]
 
-    # Dark theme style with red/green candles
+    # Style: dark background, red/green candles
     mc = mpf.make_marketcolors(
         up='green', down='red',
         edge='inherit', wick={'up': 'white', 'down': 'white'},
@@ -31,7 +31,7 @@ def chart():
         rc={'font.size': 10}
     )
 
-    # Create chart figure
+    # Generate the candlestick chart
     fig, axlist = mpf.plot(
         df,
         type='candle',
@@ -42,7 +42,7 @@ def chart():
         title=data.get("symbol", "Crypto Chart")
     )
 
-    # Overlay logo watermark
+    # Add faint logo watermark
     try:
         ax = axlist[0]
         logo = mpimg.imread("WellermenLogoTrans.png")
@@ -50,8 +50,9 @@ def chart():
             logo,
             aspect='auto',
             extent=[*ax.get_xlim(), *ax.get_ylim()],
-            alpha=0.08,
-            zorder=-10
+            alpha=0.06,
+            zorder=-10,
+            interpolation='bilinear'
         )
     except Exception as e:
         print("Logo overlay failed:", e)
