@@ -11,39 +11,40 @@ app = Flask(__name__)
 def chart():
     data = request.json
 
+    # Create DataFrame
     df = pd.DataFrame(data["ohlc"])
     df.index = pd.to_datetime(df["timestamp"])
     df = df[["Open", "High", "Low", "Close", "Volume"]]
 
-    # Define dark theme and custom market colors
-    style = mpf.make_mpf_style(base_mpf_style='nightclouds')
+    # Set dark theme with custom red/green candles
     mc = mpf.make_marketcolors(up='green', down='red', inherit=True)
+    style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc)
 
     # Plot chart
     fig, axlist = mpf.plot(
         df,
         type='candle',
+        style=style,
         mav=data.get("ema", []),
         hlines=dict(hlines=data.get("support", []), colors='red'),
-        style=mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc),
         returnfig=True,
-        title='Crypto Chart',
-        ylabel='Price'
+        figsize=(8, 6),
+        title="Crypto Chart"
     )
 
     # Add faint watermark logo if available
-    logo_path = "WellermenLogoTrans.png"
+    logo_path = os.path.join(os.path.dirname(__file__), 'WellermenLogoTrans.png')
     if os.path.exists(logo_path):
         img = plt.imread(logo_path)
         ax = axlist[0]
-        ax.imshow(img, aspect='auto', extent=(0, 1, 0, 1), alpha=0.08,
-                  transform=ax.transAxes, zorder=0)
+        x_min, x_max = ax.get_xlim()
+        y_min, y_max = ax.get_ylim()
+        ax.imshow(img, aspect='auto', extent=(x_min, x_max, y_min, y_max), alpha=0.08, zorder=0)
 
-    # Save to buffer
+    # Output to memory
     buf = io.BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+    fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
     buf.seek(0)
-    return send_file(buf, mimetype='image/png')
+    plt.close(fig)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    return send_file(buf, mimetype='image/png')
