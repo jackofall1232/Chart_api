@@ -14,41 +14,47 @@ def chart():
 
     # Prepare DataFrame
     try:
-        df = pd.DataFrame(data['ohlc'])
+        df = pd.DataFrame(data['candles'])  # Use 'candles' from JSON
         if df.empty:
             return "Error: Empty OHLC data", 400
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df.set_index('timestamp', inplace=True)
-        df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+        df['time'] = pd.to_datetime(df['time'])  # Use 'time' from JSON
+        df.set_index('time', inplace=True)
+        df = df[['open', 'high', 'low', 'close', 'volume']]  # Match JSON keys
+        df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']  # Rename for mplfinance
 
         # Validate data
         if len(df) < 1:
             return "Error: Insufficient data", 400
         print(f"DataFrame shape: {df.shape}, Columns: {df.columns.tolist()}")  # Debug
 
+        # Calculate Bollinger Bands (20-period SMA, 2 std dev)
+        df['SMA'] = df['Close'].rolling(window=20).mean()
+        df['STD'] = df['Close'].rolling(window=20).std()
+        df['Upper'] = df['SMA'] + (df['STD'] * 2)
+        df['Lower'] = df['SMA'] - (df['STD'] * 2)
+        add_plots = [
+            mpf.make_addplot(df['Upper'], color='blue', linestyle='--'),
+            mpf.make_addplot(df['Lower'], color='blue', linestyle='--')
+        ]
+
         # Style setup
         mc = mpf.make_marketcolors(up='green', down='red', inherit=True)
         custom_style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc)
-
-        # Addplots (e.g., Bollinger Bands) - Assuming upper/lower are provided
-        add_plots = []
-        if 'upper' in data and 'lower' in data and len(data['upper']) == len(df):
-            add_plots += [
-                mpf.make_addplot(pd.Series(data['upper'], index=df.index), color='blue'),
-                mpf.make_addplot(pd.Series(data['lower'], index=df.index), color='blue')
-            ]
 
         # Main plot
         fig, axlist = mpf.plot(
             df,
             type='candle',
             style=custom_style,
-            title=f"{data.get('symbol', 'Crypto')} - {data.get('interval', '')} Chart",
+            title=f"{data.get('symbol', 'Crypto')} - 4H Chart",
             ylabel='Price',
             returnfig=True,
             hlines=dict(hlines=data.get("support", []), colors='red'),
             addplot=add_plots,
-            datetime_format='%Y-%m-%d %H:%M'  # Ensure proper date formatting
+            datetime_format='%Y-%m-%d %H:%M',
+            figsize=(12, 6),  # Explicit figure size
+            figscale=1.5,     # Scale up chart
+            tight_layout=False  # Avoid compression
         )
 
         # Optional: Annotate Doji
@@ -76,7 +82,8 @@ def chart():
 
         # Output buffer
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', bbox_inches='tight', dpi=150, transparent=False)
+        fig.savefig(buf, format='png', bbox_inches=None, dpi=150, transparent=False)
+        plt.close(fig)  # Close figure to free memory
         buf.seek(0)
         return send_file(buf, mimetype='image/png')
 
