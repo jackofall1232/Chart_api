@@ -15,20 +15,19 @@ def chart():
         data = request.json
 
         # Debug incoming data (optional)
-        # import json
         # print("Incoming JSON:", json.dumps(data)[:500])
 
-        # Prepare DataFrame
-        if not data or 'candles' not in data:
-            raise ValueError("Invalid JSON: 'candles' key missing")
-        df = pd.DataFrame(data['candles'])
+        # Prepare DataFrame from direct array (no 'candles' key)
+        if not data or not isinstance(data, list):
+            raise ValueError("Invalid JSON: Expected an array of OHLCV data")
+        df = pd.DataFrame(data)
         if df.empty:
             return "Error: Empty OHLC data", 400
 
         # Rename 'timestamp' to 'time' if needed
         df.rename(columns={'timestamp': 'time'}, inplace=True)
         if 'time' not in df.columns:
-            raise ValueError("Missing 'time' or 'timestamp' column in candles data")
+            raise ValueError("Missing 'time' or 'timestamp' column in data")
 
         df['time'] = pd.to_datetime(df['time'])
         df.set_index('time', inplace=True)
@@ -54,15 +53,15 @@ def chart():
         mc = mpf.make_marketcolors(up='green', down='red', inherit=True)
         custom_style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc)
 
-        # Main plot
+        # Main plot (candlestick chart)
         fig, axlist = mpf.plot(
             df,
-            type='candle',
+            type='candle',  # Ensures candlestick rendering
             style=custom_style,
-            title=f"{data.get('symbol', 'Crypto')} - 4H Chart",
+            title=f"{data[0].get('symbol', 'Crypto')} - 4H Chart",
             ylabel='Price',
             returnfig=True,
-            hlines=dict(hlines=data.get('support', []), colors='red'),
+            hlines=dict(hlines=data[0].get('support', []), colors='red'),
             addplot=add_plots,
             datetime_format='%Y-%m-%d %H:%M:%S',
             figsize=(12, 6),
@@ -71,7 +70,7 @@ def chart():
         )
 
         # Optional: Annotate Doji
-        if data.get("highlight_patterns"):
+        if data[0].get("highlight_patterns"):
             ax = axlist[0]
             for i, row in df.iterrows():
                 candle_range = row["High"] - row["Low"]
