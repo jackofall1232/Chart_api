@@ -19,22 +19,36 @@ def home():
         "description": "Submit OHLCV data to generate a candlestick chart with Bollinger Bands",
         "example": {
             "data": [
-                {"timestamp": "2025-06-10 00:00:00", "open": 100, "high": 110, "low": 90, "close": 105, "volume": 1000, "symbol": "BTC", "support": [100], "highlight_patterns": True}
+                {
+                    "timestamp": "2025-06-10 00:00:00",
+                    "open": 100,
+                    "high": 110,
+                    "low": 90,
+                    "close": 105,
+                    "volume": 1000,
+                    "symbol": "BTC",
+                    "support": [100],
+                    "highlight_patterns": True
+                }
             ]
         }
     }, 200
 
 @app.route('/chart', methods=['POST'])
 def chart():
+    print("📩 Raw incoming request:", request.get_data(as_text=True))  # Debug log
+
     try:
         data = request.json
         app.logger.debug("Received data: %s", data[:2] if isinstance(data, list) else data)
 
         if not data or not isinstance(data, list):
             raise ValueError("Invalid JSON: Expected an array of OHLCV data")
+
         df = pd.DataFrame(data)
         if df.empty:
             return "Error: Empty OHLC data", 400
+
         app.logger.debug("Raw DataFrame:\n%s", df.head().to_dict())
 
         df.rename(columns={'timestamp': 'time'}, inplace=True)
@@ -47,10 +61,12 @@ def chart():
         required_cols = ['open', 'high', 'low', 'close', 'volume']
         if not all(col in df.columns for col in required_cols):
             raise ValueError(f"Missing required columns: {required_cols}")
+
         df = df[required_cols]
         df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
         app.logger.debug("Processed DataFrame shape: %s, Columns: %s", df.shape, df.columns.tolist())
 
+        # Bollinger Bands
         df['SMA'] = df['Close'].rolling(window=20).mean()
         df['STD'] = df['Close'].rolling(window=20).std()
         df['Upper'] = df['SMA'] + (df['STD'] * 2)
@@ -60,6 +76,7 @@ def chart():
             mpf.make_addplot(df['Lower'], color='blue', linestyle='--')
         ]
 
+        # Styling
         mc = mpf.make_marketcolors(up='green', down='red', inherit=True)
         custom_style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc)
 
@@ -78,6 +95,7 @@ def chart():
             tight_layout=False
         )
 
+        # Highlight Doji candles
         if data[0].get("highlight_patterns"):
             ax = axlist[0]
             for i, row in df.iterrows():
@@ -85,6 +103,7 @@ def chart():
                 if candle_range > 0 and abs(row["Open"] - row["Close"]) < 0.1 * candle_range:
                     ax.annotate("★", (i, row["High"] + 0.5 * candle_range), color='yellow', ha='center', fontsize=9)
 
+        # Optional logo overlay
         logo_path = os.path.join(os.path.dirname(__file__), 'WellermenLogoTrans.png')
         if os.path.exists(logo_path):
             try:
@@ -99,6 +118,7 @@ def chart():
         else:
             app.logger.warning("Logo file not found at: %s", logo_path)
 
+        # Save to buffer and return
         buf = io.BytesIO()
         fig.savefig(buf, format='png', dpi=150, transparent=False)
         plt.close(fig)
