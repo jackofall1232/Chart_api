@@ -13,17 +13,22 @@ app = Flask(__name__)
 def chart():
     try:
         data = request.json
-        
+
         # Prepare DataFrame
         if not data or 'candles' not in data:
             raise ValueError("Invalid JSON: 'candles' key missing")
         df = pd.DataFrame(data['candles'])
         if df.empty:
             return "Error: Empty OHLC data", 400
+
+        # Rename timestamp to time for internal use
+        df.rename(columns={'timestamp': 'time'}, inplace=True)
+
         if 'time' not in df.columns:
-            raise ValueError("Missing 'time' column in candles data")
+            raise ValueError("Missing 'timestamp' (renamed to 'time') column in candles data")
         df['time'] = pd.to_datetime(df['time'])
         df.set_index('time', inplace=True)
+
         required_cols = ['open', 'high', 'low', 'close', 'volume']
         if not all(col in df.columns for col in required_cols):
             raise ValueError(f"Missing required columns: {required_cols}")
@@ -86,8 +91,8 @@ def chart():
 
         # Output buffer
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', bbox_inches=None, dpi=150, transparent=False)
-        plt.close(fig)  # Close figure to free memory
+        fig.savefig(buf, format='png', dpi=150, transparent=False)
+        plt.close(fig)
         buf.seek(0)
         return send_file(buf, mimetype='image/png')
 
