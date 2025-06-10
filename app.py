@@ -9,7 +9,7 @@ import traceback
 import logging
 
 app = Flask(__name__)
-logging.basicConfig(filename='app.log', level=logging.ERROR)
+logging.basicConfig(filename='app.log', level=logging.INFO)
 
 @app.route('/', methods=['GET'])
 def home():
@@ -36,35 +36,36 @@ def home():
 
 @app.route('/chart', methods=['POST'])
 def chart():
-    print("📩 Raw incoming request:", request.get_data(as_text=True))  # Debug log
-
     try:
-        data = request.json
-        app.logger.debug("Received data: %s", data[:2] if isinstance(data, list) else data)
+        # Accepts raw array or {"candles": [...]}
+        raw_input = request.json
+        data = raw_input.get('candles', raw_input)
 
         if not data or not isinstance(data, list):
             raise ValueError("Invalid JSON: Expected an array of OHLCV data")
+        
+        app.logger.info("Received %d entries", len(data))
 
         df = pd.DataFrame(data)
         if df.empty:
             return "Error: Empty OHLC data", 400
 
-        app.logger.debug("Raw DataFrame:\n%s", df.head().to_dict())
+        app.logger.info("Raw DataFrame: %s", df.head(2).to_dict())
 
+        # Rename timestamp to time and set index
         df.rename(columns={'timestamp': 'time'}, inplace=True)
         if 'time' not in df.columns:
-            raise ValueError("Missing 'time' or 'timestamp' column in data")
-
+            raise ValueError("Missing 'timestamp' or 'time' column in data")
+        
         df['time'] = pd.to_datetime(df['time'], errors='coerce')
         df.set_index('time', inplace=True)
 
         required_cols = ['open', 'high', 'low', 'close', 'volume']
         if not all(col in df.columns for col in required_cols):
             raise ValueError(f"Missing required columns: {required_cols}")
-
+        
         df = df[required_cols]
         df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-        app.logger.debug("Processed DataFrame shape: %s, Columns: %s", df.shape, df.columns.tolist())
 
         # Bollinger Bands
         df['SMA'] = df['Close'].rolling(window=20).mean()
@@ -76,7 +77,6 @@ def chart():
             mpf.make_addplot(df['Lower'], color='blue', linestyle='--')
         ]
 
-        # Styling
         mc = mpf.make_marketcolors(up='green', down='red', inherit=True)
         custom_style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc)
 
@@ -95,7 +95,7 @@ def chart():
             tight_layout=False
         )
 
-        # Highlight Doji candles
+        # Annotate Doji if requested
         if data[0].get("highlight_patterns"):
             ax = axlist[0]
             for i, row in df.iterrows():
@@ -103,7 +103,7 @@ def chart():
                 if candle_range > 0 and abs(row["Open"] - row["Close"]) < 0.1 * candle_range:
                     ax.annotate("★", (i, row["High"] + 0.5 * candle_range), color='yellow', ha='center', fontsize=9)
 
-        # Optional logo overlay
+        # Watermark overlay
         logo_path = os.path.join(os.path.dirname(__file__), 'WellermenLogoTrans.png')
         if os.path.exists(logo_path):
             try:
@@ -112,22 +112,15 @@ def chart():
                 x_min, x_max = ax.get_xlim()
                 y_min, y_max = ax.get_ylim()
                 ax.imshow(img, extent=(x_min, x_max, y_min, y_max), alpha=0.08, aspect='auto', zorder=-1)
-                app.logger.debug("Watermark added")
             except Exception as e:
                 app.logger.error("Watermark error: %s", e)
-        else:
-            app.logger.warning("Logo file not found at: %s", logo_path)
 
-        # Save to buffer and return
         buf = io.BytesIO()
         fig.savefig(buf, format='png', dpi=150, transparent=False)
         plt.close(fig)
         buf.seek(0)
         return send_file(buf, mimetype='image/png')
 
-    except KeyError as e:
-        app.logger.error("KeyError: %s\n%s", str(e), traceback.format_exc())
-        return f"Error: Missing key in JSON data - {e}", 400
     except Exception as e:
         app.logger.error("Error: %s\n%s", str(e), traceback.format_exc())
         return f"Error: {str(e)}", 500
