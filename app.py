@@ -78,7 +78,7 @@ def chart():
                     ax.annotate("★", (i, row["High"] + 0.5 * candle_range), color='yellow', ha='center', fontsize=9)
 
         # Watermark overlay
-        logo_path = os.path.join(os.path.dirname(__file__), 'WellermenLogoTrans.png')
+        logo_path = os.path.join(os.path.dirname(__file__), 'Chart_api', 'WellermenLogoTrans.png')
         if os.path.exists(logo_path):
             try:
                 img = plt.imread(logo_path)
