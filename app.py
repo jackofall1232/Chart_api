@@ -13,9 +13,7 @@ app = Flask(__name__)
 def chart():
     try:
         data = request.json
-
-        # Debug incoming data (optional)
-        # print("Incoming JSON:", json.dumps(data)[:500])
+        print("Received data:", data[:2] if isinstance(data, list) else data)  # Log first 2 items or full dict
 
         # Prepare DataFrame from direct array (no 'candles' key)
         if not data or not isinstance(data, list):
@@ -23,13 +21,14 @@ def chart():
         df = pd.DataFrame(data)
         if df.empty:
             return "Error: Empty OHLC data", 400
+        print("Raw DataFrame:\n", df.head().to_dict())
 
         # Rename 'timestamp' to 'time' if needed
         df.rename(columns={'timestamp': 'time'}, inplace=True)
         if 'time' not in df.columns:
             raise ValueError("Missing 'time' or 'timestamp' column in data")
 
-        df['time'] = pd.to_datetime(df['time'])
+        df['time'] = pd.to_datetime(df['time'], errors='coerce')
         df.set_index('time', inplace=True)
 
         required_cols = ['open', 'high', 'low', 'close', 'volume']
@@ -37,7 +36,7 @@ def chart():
             raise ValueError(f"Missing required columns: {required_cols}")
         df = df[required_cols]
         df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']  # Rename for mplfinance
-        print(f"DataFrame shape: {df.shape}, Columns: {df.columns.tolist()}")  # Debug
+        print(f"Processed DataFrame shape: {df.shape}, Columns: {df.columns.tolist()}")
 
         # Calculate Bollinger Bands (20-period SMA, 2 std dev)
         df['SMA'] = df['Close'].rolling(window=20).mean()
@@ -56,7 +55,7 @@ def chart():
         # Main plot (candlestick chart)
         fig, axlist = mpf.plot(
             df,
-            type='candle',  # Ensures candlestick rendering
+            type='candle',
             style=custom_style,
             title=f"{data[0].get('symbol', 'Crypto')} - 4H Chart",
             ylabel='Price',
