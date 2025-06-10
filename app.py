@@ -62,7 +62,7 @@ def chart():
         )
 
         # Optional: Annotate Doji
-        if data.get("candles", {}).get("highlight_patterns"):
+        if data.get("highlight_patterns"):
             ax = axlist[0]
             for i, row in df.iterrows():
                 candle_range = row["High"] - row["Low"]
