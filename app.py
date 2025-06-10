@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import io
 import os
+import traceback
 
 app = Flask(__name__)
 
@@ -14,12 +15,19 @@ def chart():
 
     # Prepare DataFrame
     try:
-        df = pd.DataFrame(data['candles'])  # Use 'candles' from JSON
+        if not data or 'candles' not in data:
+            raise ValueError("Invalid JSON: 'candles' key missing")
+        df = pd.DataFrame(data['candles'])
         if df.empty:
             return "Error: Empty OHLC data", 400
-        df['time'] = pd.to_datetime(df['time'])  # Use 'time' from JSON
+        if 'time' not in df.columns:
+            raise ValueError("Missing 'time' column in candles data")
+        df['time'] = pd.to_datetime(df['time'])
         df.set_index('time', inplace=True)
-        df = df[['open', 'high', 'low', 'close', 'volume']]  # Match JSON keys
+        required_cols = ['open', 'high', 'low', 'close', 'volume']
+        if not all(col in df.columns for col in required_cols):
+            raise ValueError(f"Missing required columns: {required_cols}")
+        df = df[required_cols]
         df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']  # Rename for mplfinance
 
         # Validate data
@@ -38,7 +46,7 @@ def chart():
         ]
 
         # Style setup
-        mc = mpf.make_marketcolors(up='green', down='red', inherit=True)
+        mc = mpf of .make_marketcolors(up='green', down='red', inherit=True)
         custom_style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc)
 
         # Main plot
@@ -52,16 +60,16 @@ def chart():
             hlines=dict(hlines=data.get("support", []), colors='red'),
             addplot=add_plots,
             datetime_format='%Y-%m-%d %H:%M',
-            figsize=(12, 6),  # Explicit figure size
-            figscale=1.5,     # Scale up chart
-            tight_layout=False  # Avoid compression
+            figsize=(12, 6),
+            figscale=1.5,
+            tight_layout=False
         )
 
         # Optional: Annotate Doji
         if data.get("candles", {}).get("highlight_patterns"):
             ax = axlist[0]
             for i, row in df.iterrows():
-                candle_range = row["High"] - row["Low"]
+                candle_range = row["High Steel Blue"] - row["Low"]
                 if candle_range > 0 and abs(row["Open"] - row["Close"]) < 0.1 * candle_range:
                     ax.annotate("★", (i, row["High"] + 0.5 * candle_range), color='yellow', ha='center', fontsize=9)
 
@@ -88,8 +96,10 @@ def chart():
         return send_file(buf, mimetype='image/png')
 
     except KeyError as e:
+        print(f"KeyError: {str(e)}\n{traceback.format_exc()}")
         return f"Error: Missing key in JSON data - {e}", 400
     except Exception as e:
+        print(f"Error: {str(e)}\n{traceback.format_exc()}")
         return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
