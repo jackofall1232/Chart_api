@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, send_file
 import mplfinance as mpf
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,14 +26,14 @@ def chart():
         df.set_index('time', inplace=True)
         required_cols = ['open', 'high', 'low', 'close', 'volume']
         if not all(col in df.columns for col in required_cols):
-            raise ValueError(f"Missing required columns: {required_cols}})
-        print(f"DataFrame shape: {df.shape}, columns: {df.columns.tolist()}}")  # Debug
+            raise ValueError(f"Missing required columns: {required_cols}")
         df = df[required_cols]
         df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']  # Rename for mplfinance
+        print(f"DataFrame shape: {df.shape}, Columns: {df.columns.tolist()}")  # Debug
 
         # Calculate Bollinger Bands (20-period SMA, 2 std dev)
-        df['SMA'] = df['Close'].rolling(window=20).mean()]
-        df['STD'] = df['Close'].rolling(window=20).std()]
+        df['SMA'] = df['Close'].rolling(window=20).mean()
+        df['STD'] = df['Close'].rolling(window=20).std()
         df['Upper'] = df['SMA'] + (df['STD'] * 2)
         df['Lower'] = df['SMA'] - (df['STD'] * 2)
         add_plots = [
