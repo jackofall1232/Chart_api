@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file
+from flask import Flask, request
 import mplfinance as mpf
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,10 +11,10 @@ app = Flask(__name__)
 
 @app.route('/chart', methods=['POST'])
 def chart():
-    data = request.json
-
-    # Prepare DataFrame
     try:
+        data = request.json
+        
+        # Prepare DataFrame
         if not data or 'candles' not in data:
             raise ValueError("Invalid JSON: 'candles' key missing")
         df = pd.DataFrame(data['candles'])
@@ -26,18 +26,14 @@ def chart():
         df.set_index('time', inplace=True)
         required_cols = ['open', 'high', 'low', 'close', 'volume']
         if not all(col in df.columns for col in required_cols):
-            raise ValueError(f"Missing required columns: {required_cols}")
+            raise ValueError(f"Missing required columns: {required_cols}})
+        print(f"DataFrame shape: {df.shape}, columns: {df.columns.tolist()}}")  # Debug
         df = df[required_cols]
         df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']  # Rename for mplfinance
 
-        # Validate data
-        if len(df) < 1:
-            return "Error: Insufficient data", 400
-        print(f"DataFrame shape: {df.shape}, Columns: {df.columns.tolist()}")  # Debug
-
         # Calculate Bollinger Bands (20-period SMA, 2 std dev)
-        df['SMA'] = df['Close'].rolling(window=20).mean()
-        df['STD'] = df['Close'].rolling(window=20).std()
+        df['SMA'] = df['Close'].rolling(window=20).mean()]
+        df['STD'] = df['Close'].rolling(window=20).std()]
         df['Upper'] = df['SMA'] + (df['STD'] * 2)
         df['Lower'] = df['SMA'] - (df['STD'] * 2)
         add_plots = [
@@ -46,7 +42,7 @@ def chart():
         ]
 
         # Style setup
-        mc = mpf of .make_marketcolors(up='green', down='red', inherit=True)
+        mc = mpf.make_marketcolors(up='green', down='red', inherit=True)
         custom_style = mpf.make_mpf_style(base_mpf_style='nightclouds', marketcolors=mc)
 
         # Main plot
@@ -57,9 +53,9 @@ def chart():
             title=f"{data.get('symbol', 'Crypto')} - 4H Chart",
             ylabel='Price',
             returnfig=True,
-            hlines=dict(hlines=data.get("support", []), colors='red'),
+            hlines=dict(hlines=data.get('support', []), colors='red'),
             addplot=add_plots,
-            datetime_format='%Y-%m-%d %H:%M',
+            datetime_format='%Y-%m-%d %H:%M:%S',
             figsize=(12, 6),
             figscale=1.5,
             tight_layout=False
@@ -69,7 +65,7 @@ def chart():
         if data.get("candles", {}).get("highlight_patterns"):
             ax = axlist[0]
             for i, row in df.iterrows():
-                candle_range = row["High Steel Blue"] - row["Low"]
+                candle_range = row["High"] - row["Low"]
                 if candle_range > 0 and abs(row["Open"] - row["Close"]) < 0.1 * candle_range:
                     ax.annotate("★", (i, row["High"] + 0.5 * candle_range), color='yellow', ha='center', fontsize=9)
 
