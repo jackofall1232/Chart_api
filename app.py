@@ -19,7 +19,7 @@ def home():
         "description": "Submit OHLCV data to generate a candlestick chart with Bollinger Bands",
         "example": {
             "data": [
-                {"timestamp": "2025-06-10 00:00:00", "open": 100, "high": 110, "low": 90, "close": 105, "volume": 1000, "symbol": "BTC", "support": [100], "highlight_patterns": true}
+                {"timestamp": "2025-06-10 00:00:00", "open": 100, "high": 110, "low": 90, "close": 105, "volume": 1000, "symbol": "BTC", "support": [100], "highlight_patterns": True}
             ]
         }
     }, 200
@@ -44,7 +44,7 @@ def chart():
         df['time'] = pd.to_datetime(df['time'], errors='coerce')
         df.set_index('time', inplace=True)
 
-        required_cols = ['open', 'high "low', 'close', 'volume']
+        required_cols = ['open', 'high', 'low', 'close', 'volume']
         if not all(col in df.columns for col in required_cols):
             raise ValueError(f"Missing required columns: {required_cols}")
         df = df[required_cols]
