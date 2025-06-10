@@ -14,6 +14,10 @@ def chart():
     try:
         data = request.json
 
+        # Debug incoming data (optional)
+        # import json
+        # print("Incoming JSON:", json.dumps(data)[:500])
+
         # Prepare DataFrame
         if not data or 'candles' not in data:
             raise ValueError("Invalid JSON: 'candles' key missing")
@@ -21,11 +25,11 @@ def chart():
         if df.empty:
             return "Error: Empty OHLC data", 400
 
-        # Rename timestamp to time for internal use
+        # Rename 'timestamp' to 'time' if needed
         df.rename(columns={'timestamp': 'time'}, inplace=True)
-
         if 'time' not in df.columns:
-            raise ValueError("Missing 'timestamp' (renamed to 'time') column in candles data")
+            raise ValueError("Missing 'time' or 'timestamp' column in candles data")
+
         df['time'] = pd.to_datetime(df['time'])
         df.set_index('time', inplace=True)
 
